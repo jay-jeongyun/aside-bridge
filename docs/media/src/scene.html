@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>aside-bridge demo scene</title>
+<!--
+  README demo scene for aside-bridge. Everything here is a mock UI drawn in HTML/CSS:
+  no real screenshots, no real user data. The GSAP timeline is paused and driven by
+  window.__seek(t) so render.mjs can capture frame-exact output.
+  Open it in a browser with ?play to watch it loop in real time.
+-->
+<style>
+  :root {
+    --bg: #0a0d14;
+    --panel: #10141d;
+    --line: #1f2633;
+    --text: #d7dde8;
+    --dim: #6b7587;
+    --mint: #5eead4;
+    --blue: #7aa2ff;
+    --red: #ff5f57;
+    --mono: Menlo, ui-monospace, "SF Mono", SFMono-Regular, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1200px; height: 660px; overflow: hidden; background: var(--bg); }
+  body { font-family: var(--sans); color: var(--text); -webkit-font-smoothing: antialiased; }
+  #stage { position: relative; width: 1200px; height: 660px; overflow: hidden;
+    background: radial-gradient(900px 500px at 20% 0%, #121a2a 0%, rgba(10,13,20,0) 60%), var(--bg); }
+
+  /* ---------- header + flow ---------- */
+  #header { position: absolute; left: 28px; right: 28px; top: 14px; height: 36px;
+    display: flex; align-items: center; justify-content: space-between; }
+  .wordmark { font-family: var(--mono); font-size: 15px; font-weight: 600; letter-spacing: .2px; color: #eef2f8; }
+  .wordmark b { color: var(--mint); font-weight: 600; }
+  .hdr-right { font-size: 12px; color: var(--dim); letter-spacing: .3px; }
+  #flow { position: absolute; left: 50%; top: 14px; transform: translateX(-50%);
+    display: flex; align-items: center; height: 36px; }
+  .node { font-family: var(--mono); font-size: 12px; padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--dim); background: #0e131c; white-space: nowrap; position: relative; }
+  .node .glow { position: absolute; inset: -1px; border-radius: 999px; border: 1px solid var(--mint);
+    box-shadow: 0 0 14px rgba(94,234,212,.45), inset 0 0 10px rgba(94,234,212,.15); opacity: 0; }
+  .node .lbl { position: relative; }
+  .link { position: relative; width: 54px; height: 2px; background: var(--line); margin: 0 6px; border-radius: 2px; }
+  .link .dot { position: absolute; top: -3px; left: -4px; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--mint); box-shadow: 0 0 10px var(--mint); opacity: 0; }
+  .link::after { content: ""; position: absolute; right: -4px; top: -3px; border-left: 6px solid var(--line);
+    border-top: 4px solid transparent; border-bottom: 4px solid transparent; }
+
+  /* ---------- terminal ---------- */
+  #term { position: absolute; left: 28px; top: 64px; width: 540px; height: 548px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,.45); }
+  #termglow { position: absolute; left: 60px; top: 120px; width: 480px; height: 420px; border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(94,234,212,.10), rgba(94,234,212,0)); filter: blur(10px); }
+  .tbar { height: 34px; display: flex; align-items: center; padding: 0 14px; border-bottom: 1px solid var(--line);
+    background: #0d1119; }
+  .lights { display: flex; gap: 7px; }
+  .lights i { width: 11px; height: 11px; border-radius: 50%; background: #2a3140; display: block; }
+  .tbar .ttl { flex: 1; text-align: center; font-size: 12px; color: var(--dim); margin-right: 40px; }
+  .tbar .sbx { font-family: var(--mono); font-size: 10.5px; color: #8a93a6; border: 1px solid var(--line);
+    padding: 2px 7px; border-radius: 999px; }
+  #tbody { padding: 16px 18px; font-family: var(--mono); font-size: 13px; line-height: 20px; }
+  .cmt { color: #5b6577; }
+  .blk { margin-top: 14px; }
+  .cmd { white-space: pre-wrap; word-break: break-word; color: #eef2f8; }
+  .ps { color: var(--mint); }
+  .caret { display: inline-block; width: 8px; height: 15px; background: var(--mint); vertical-align: -2px;
+    margin-left: 1px; opacity: 0; }
+  .out { color: #aab3c2; white-space: pre; }
+  .out .k { color: var(--blue); }
+  .out .n { color: #f5c26b; }
+  .out .ok { color: var(--mint); }
+  .out .d { color: #5b6577; }
+
+  /* ---------- desktop mock ---------- */
+  #desk { position: absolute; left: 584px; top: 64px; width: 588px; height: 548px; border-radius: 12px;
+    overflow: hidden; border: 1px solid var(--line); box-shadow: 0 20px 60px rgba(0,0,0,.45);
+    background: linear-gradient(160deg, #1a2140 0%, #141a2e 45%, #0f1322 100%); }
+  #wall { position: absolute; inset: -40px; }
+  .blob { position: absolute; border-radius: 50%; filter: blur(30px); }
+  .menubar { position: absolute; left: 0; right: 0; top: 0; height: 26px; background: rgba(12,15,24,.72);
+    display: flex; align-items: center; padding: 0 12px; font-size: 12px; color: #cfd6e3; gap: 16px; z-index: 50; }
+  .menubar .apple { width: 11px; height: 11px; border-radius: 50%; background: #cfd6e3; }
+  .menubar .app { font-weight: 600; }
+  .menubar .sp { flex: 1; }
+  .pill { font-family: var(--mono); font-size: 10.5px; padding: 2px 8px; border-radius: 999px;
+    background: #2a3140; color: #aab3c2; position: relative; display: flex; align-items: center; gap: 6px; }
+  .pill i { width: 6px; height: 6px; border-radius: 50%; background: #6b7587; display: block; }
+  .win { position: absolute; border-radius: 10px; overflow: hidden; box-shadow: 0 16px 40px rgba(0,0,0,.5);
+    border: 1px solid rgba(255,255,255,.08); }
+  .wbar { height: 28px; display: flex; align-items: center; padding: 0 10px; gap: 6px; }
+  .wbar i { width: 10px; height: 10px; border-radius: 50%; display: block; }
+  .wbar i:nth-child(1) { background: #ff5f57; } .wbar i:nth-child(2) { background: #febc2e; } .wbar i:nth-child(3) { background: #28c840; }
+  .wbar span { flex: 1; text-align: center; font-size: 11.5px; color: #9aa3b4; margin-right: 34px; }
+
+  #notes { left: 22px; top: 58px; width: 380px; height: 330px; background: #1c1f26; z-index: 10; }
+  #notes .body { display: flex; height: 302px; }
+  #notes .side { width: 104px; background: #171a20; padding: 10px 8px; font-size: 11.5px; color: #8d96a8; }
+  #notes .side div { padding: 5px 8px; border-radius: 6px; margin-bottom: 2px; }
+  #notes .side .on { background: #2b3040; color: #e3e8f0; }
+  #notes .doc { flex: 1; padding: 16px 18px; }
+  #notes h3 { font-size: 17px; font-weight: 700; color: #f1f4f9; }
+  #notes .date { font-size: 11px; color: #6f7889; margin: 4px 0 14px; }
+  .item { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: #dfe4ec; height: 34px; }
+  .box { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid #6f7889; position: relative; flex: none; }
+  .box.done { background: #f5b13d; border-color: #f5b13d; }
+  .box svg { position: absolute; left: 2px; top: 2px; }
+  .item.done .t { color: #7d8698; text-decoration: line-through; }
+  .t { position: relative; }
+  .strike { position: absolute; left: 0; right: 0; top: 50%; height: 1.5px; background: #7d8698;
+    transform-origin: left center; transform: scaleX(0); }
+  #ship .tick { opacity: 0; }
+
+  #calc { left: 388px; top: 150px; width: 178px; height: 274px; background: #202227; z-index: 5; }
+  #calc .disp { height: 52px; text-align: right; font-size: 34px; font-weight: 300; color: #f1f4f9; padding: 4px 14px 0; }
+  #calc .keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 8px 10px; }
+  #calc .key { height: 28px; border-radius: 50%; width: 30px; justify-self: center; background: #3a3d44;
+    font-size: 12.5px; color: #eef1f6; display: flex; align-items: center; justify-content: center; position: relative; }
+  #calc .key.fn { background: #5a5e66; } #calc .key.op { background: #f59f0a; }
+  .ref { position: absolute; border: 1.5px solid var(--blue); border-radius: 6px; opacity: 0; pointer-events: none; }
+  .badge { position: absolute; font-family: var(--mono); font-size: 9px; line-height: 11px; color: #0a0d14; background: var(--blue);
+    padding: 1px 4px; border-radius: 4px; opacity: 0; white-space: nowrap; z-index: 2; }
+
+  .dock { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); display: flex; gap: 10px;
+    padding: 7px 10px; border-radius: 16px; background: rgba(20,24,36,.6); border: 1px solid rgba(255,255,255,.07); z-index: 40; }
+  .ic { width: 38px; height: 38px; border-radius: 10px; position: relative; display: flex; align-items: center;
+    justify-content: center; font-family: var(--mono); font-size: 15px; font-weight: 700; color: rgba(255,255,255,.9); }
+  .ic .hl { position: absolute; inset: -3px; border-radius: 12px; border: 1.5px solid var(--mint);
+    box-shadow: 0 0 12px rgba(94,234,212,.6); opacity: 0; }
+
+  /* OCR overlay */
+  #ocr { position: absolute; inset: 0; z-index: 30; pointer-events: none; }
+  .obox { position: absolute; border: 1.5px dashed rgba(122,162,255,.9); border-radius: 4px; opacity: 0; }
+  .obox.hit { border-style: solid; border-color: var(--mint); box-shadow: 0 0 14px rgba(94,234,212,.5); }
+  .olabel { position: absolute; font-family: var(--mono); font-size: 10px; background: var(--mint); color: #062520;
+    padding: 1px 5px; border-radius: 4px; opacity: 0; white-space: nowrap; }
+  #scanclip { position: absolute; overflow: hidden; border-radius: 10px; }
+  #scan { position: absolute; left: 0; right: 0; top: -46px; height: 46px; opacity: 0;
+    background: linear-gradient(180deg, rgba(122,162,255,0) 0%, rgba(122,162,255,.18) 80%, rgba(122,162,255,.75) 100%); }
+  #cursor { position: absolute; left: 0; top: 0; z-index: 60; filter: drop-shadow(0 2px 3px rgba(0,0,0,.5)); }
+  #ripple { position: absolute; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%;
+    border: 2px solid var(--red); z-index: 59; opacity: 0; }
+
+  /* steps strip */
+  #steps { position: absolute; left: 28px; right: 28px; top: 624px; height: 24px; display: flex;
+    justify-content: center; gap: 10px; font-size: 12px; }
+  .step { color: var(--dim); padding: 4px 12px; border-radius: 999px; border: 1px solid transparent; position: relative; }
+  .step .on { position: absolute; inset: -1px; border-radius: 999px; border: 1px solid rgba(94,234,212,.5);
+    background: rgba(94,234,212,.08); opacity: 0; }
+  .step span { position: relative; }
+  .step em { font-style: normal; font-family: var(--mono); color: #48526a; margin-right: 6px; }
+
+  /* title card */
+  #title { position: absolute; inset: 0; z-index: 100; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; background:
+    radial-gradient(700px 360px at 50% 46%, #142035 0%, rgba(10,13,20,0) 70%), var(--bg); }
+  #title .big { font-family: var(--mono); font-size: 64px; font-weight: 700; color: #f2f5fa; letter-spacing: -1px; }
+  #title .big b { color: var(--mint); font-weight: 700; }
+  #title .big .tc { display: inline-block; width: 28px; height: 56px; background: var(--mint); vertical-align: -6px; margin-left: 6px; }
+  #title .tag { margin-top: 16px; font-size: 22px; color: #a9b2c3; }
+  #title .mini { margin-top: 30px; display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 13px; color: #7f899b; }
+  #title .mini .a { color: #5b6577; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="header">
+    <div class="wordmark">aside<b>-</b>bridge</div>
+    <div class="hdr-right">local · token-protected · guarded</div>
+  </div>
+  <div id="flow">
+    <div class="node" id="n1"><div class="glow"></div><span class="lbl">sandboxed agent</span></div>
+    <div class="link" id="l1"><div class="dot"></div></div>
+    <div class="node" id="n2"><div class="glow"></div><span class="lbl">aside-bridge</span></div>
+    <div class="link" id="l2"><div class="dot"></div></div>
+    <div class="node" id="n3"><div class="glow"></div><span class="lbl">macOS apps</span></div>
+  </div>
+
+  <div id="term">
+    <div id="termglow"></div>
+    <div class="tbar">
+      <div class="lights"><i></i><i></i><i></i></div>
+      <div class="ttl">agent</div>
+      <div class="sbx">sandboxed</div>
+    </div>
+    <div id="tbody">
+      <div class="cmt" id="c0"># osascript fails in here (-10827). Ask the bridge.</div>
+
+      <div class="blk" id="b1">
+        <div class="cmd"><span class="ps">$ </span><span class="ty" data-cmd="bridgectl as 'tell application &quot;System Events&quot; to get name of every application process whose visible is true'"></span><span class="caret"></span></div>
+        <div class="out o">Finder, Notes, Calculator, Terminal  <span class="d">0.17 s</span></div>
+      </div>
+
+      <div class="blk" id="b2">
+        <div class="cmd"><span class="ps">$ </span><span class="ty" data-cmd='bridgectl ocr --win Notes --find "Ship it"'></span><span class="caret"></span></div>
+        <div class="out o">{<span class="k">"text"</span>: "Ship it", <span class="k">"x"</span>: <span class="n">812</span>, <span class="k">"y"</span>: <span class="n">436</span>, <span class="k">"conf"</span>: <span class="n">0.98</span>}</div>
+      </div>
+
+      <div class="blk" id="b3">
+        <div class="cmd"><span class="ps">$ </span><span class="ty" data-cmd="bridgectl click 812 436 --expect Notes"></span><span class="caret"></span></div>
+        <div class="out o"><span class="ok">ok</span>  front=Notes  <span class="d">guards:</span> stop <span class="ok">✓</span> lock <span class="ok">✓</span> idle <span class="ok">✓</span></div>
+      </div>
+
+      <div class="blk" id="b4">
+        <div class="cmd"><span class="ps">$ </span><span class="ty" data-cmd="bridgectl desktop snapshot --app Calculator"></span><span class="caret"></span></div>
+        <div class="out o">- window "Calculator"   <span class="k">@s1:e1</span></div>
+        <div class="out o">  - text "0"            <span class="k">@s1:e3</span></div>
+        <div class="out o">  - button "AC"         <span class="k">@s1:e5</span></div>
+        <div class="out o">  - button "7"          <span class="k">@s1:e9</span></div>
+        <div class="out o">  - button "+"          <span class="k">@s1:e20</span></div>
+        <div class="out o">  - button "="          <span class="k">@s1:e24</span></div>
+        <div class="out o"><span class="d">  … 18 more</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="desk">
+    <div id="wall">
+      <div class="blob" style="left:300px;top:40px;width:340px;height:260px;background:rgba(122,162,255,.18)"></div>
+      <div class="blob" style="left:40px;top:330px;width:300px;height:220px;background:rgba(94,234,212,.10)"></div>
+    </div>
+    <div class="menubar">
+      <div class="apple"></div><div class="app" id="mbapp">Notes</div><div>File</div><div>Edit</div><div>View</div>
+      <div class="sp"></div>
+      <div class="pill" id="pill"><i></i><span id="pilltxt">bridge</span></div>
+      <div>9:41</div>
+    </div>
+
+    <div class="win" id="notes">
+      <div class="wbar"><i></i><i></i><i></i><span>Notes</span></div>
+      <div class="body">
+        <div class="side"><div class="on">Launch</div><div>Ideas</div><div>Recipes</div><div>Travel</div></div>
+        <div class="doc">
+          <h3 class="ow">Launch checklist</h3>
+          <div class="date">Today</div>
+          <div class="item done"><div class="box done"><svg width="9" height="9" viewBox="0 0 10 10"><path d="M1.5 5.2l2.3 2.3 4.7-5" stroke="#1c1f26" stroke-width="1.8" fill="none"/></svg></div><span class="t ow">Write the README</span></div>
+          <div class="item done"><div class="box done"><svg width="9" height="9" viewBox="0 0 10 10"><path d="M1.5 5.2l2.3 2.3 4.7-5" stroke="#1c1f26" stroke-width="1.8" fill="none"/></svg></div><span class="t ow">Record a demo</span></div>
+          <div class="item" id="ship"><div class="box" id="shipbox"><svg class="tick" width="9" height="9" viewBox="0 0 10 10"><path d="M1.5 5.2l2.3 2.3 4.7-5" stroke="#1c1f26" stroke-width="1.8" fill="none"/></svg></div><span class="t ow" id="shiptxt">Ship it<span class="strike"></span></span></div>
+          <div class="item"><div class="box"></div><span class="t ow">Tell a friend</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="win" id="calc">
+      <div class="wbar"><i></i><i></i><i></i><span>Calculator</span></div>
+      <div class="disp" id="disp">0</div>
+      <div class="keys" id="keys"></div>
+    </div>
+
+    <div class="dock" id="dock">
+      <div class="ic" style="background:linear-gradient(#5aa9ff,#2c6fe0)">F<div class="hl"></div></div>
+      <div class="ic" style="background:linear-gradient(#ffd66b,#f0a92a)">N<div class="hl"></div></div>
+      <div class="ic" style="background:linear-gradient(#5d6270,#383c46)">=<div class="hl"></div></div>
+      <div class="ic" style="background:linear-gradient(#2f3542,#161a22)">&gt;_<div class="hl"></div></div>
+      <div class="ic" style="background:linear-gradient(#7fd3ff,#3b8fe8)">S</div>
+    </div>
+
+    <div id="ocr"><div id="scanclip"><div id="scan"></div></div></div>
+    <div id="ripple"></div>
+    <svg id="cursor" width="20" height="26" viewBox="0 0 20 26"><path d="M2 1.5v19.5l5-4.6 3.4 7.6 3.3-1.5-3.4-7.4h6.9z" fill="#fff" stroke="#111" stroke-width="1.4" stroke-linejoin="round"/></svg>
+  </div>
+
+  <div id="steps">
+    <div class="step"><div class="on"></div><span><em>1</em>AppleScript / JXA</span></div>
+    <div class="step"><div class="on"></div><span><em>2</em>Window OCR</span></div>
+    <div class="step"><div class="on"></div><span><em>3</em>Guarded input</span></div>
+    <div class="step"><div class="on"></div><span><em>4</em>Accessibility tree</span></div>
+  </div>
+
+  <div id="title">
+    <div class="big">aside<b>-</b>bridge<span class="tc"></span></div>
+    <div class="tag">Let sandboxed AI agents control native macOS apps</div>
+    <div class="mini"><span>sandboxed agent</span><span class="a">→</span><span>aside-bridge</span><span class="a">→</span><span>macOS apps</span></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+<script>
+(function () {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+
+  // calculator keys
+  const keys = ['AC','+/-','%','÷','7','8','9','×','4','5','6','−','1','2','3','+','0','.','⌫','='];
+  const kWrap = $('#keys');
+  keys.forEach((k, i) => {
+    const d = document.createElement('div');
+    d.className = 'key' + (i < 3 ? ' fn' : '') + ((i % 4 === 3) ? ' op' : '');
+    d.textContent = k; kWrap.appendChild(d);
+  });
+
+  const desk = $('#desk');
+  const dr = desk.getBoundingClientRect();
+  const rel = (el) => { const r = el.getBoundingClientRect(); return { x: r.left - dr.left, y: r.top - dr.top, w: r.width, h: r.height }; };
+
+  // OCR boxes around every text run in the Notes window
+  const ocr = $('#ocr');
+  const words = $$('#notes .ow');
+  const boxes = words.map((w) => {
+    const r = rel(w.firstChild && w.firstChild.nodeType === 3 ? (() => { const rg = document.createRange(); rg.selectNodeContents(w.firstChild); return { getBoundingClientRect: () => rg.getBoundingClientRect() }; })() : w);
+    const b = document.createElement('div'); b.className = 'obox';
+    Object.assign(b.style, { left: (r.x - 4) + 'px', top: (r.y - 3) + 'px', width: (r.w + 8) + 'px', height: (r.h + 6) + 'px' });
+    ocr.appendChild(b); return { b, w, r };
+  });
+  const hit = boxes.find((o) => o.w.id === 'shiptxt');
+  const hitBox = document.createElement('div'); hitBox.className = 'obox hit';
+  Object.assign(hitBox.style, { left: hit.b.style.left, top: hit.b.style.top, width: hit.b.style.width, height: hit.b.style.height });
+  ocr.appendChild(hitBox);
+  const lbl = document.createElement('div'); lbl.className = 'olabel'; lbl.textContent = '"Ship it" 0.98';
+  Object.assign(lbl.style, { left: (hit.r.x + hit.r.w + 10) + 'px', top: (hit.r.y + 1) + 'px' });
+  ocr.appendChild(lbl);
+  const nr = rel($('#notes'));
+  const scan = $('#scan');
+  Object.assign($('#scanclip').style, { left: nr.x + 'px', top: (nr.y + 28) + 'px', width: nr.w + 'px', height: (nr.h - 28) + 'px' });
+
+  // accessibility refs on calculator
+  const calc = $('#calc');
+  const refTargets = [$('#disp'), ...$$('#keys .key')];
+  const refBoxes = refTargets.map((el) => {
+    const r = { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight };
+    let p = el.offsetParent; // keys -> calc
+    if (p && p.id === 'keys') { r.x += p.offsetLeft; r.y += p.offsetTop; }
+    const b = document.createElement('div'); b.className = 'ref';
+    Object.assign(b.style, { left: (r.x - 2) + 'px', top: (r.y - 2) + 'px', width: (r.w + 4) + 'px', height: (r.h + 4) + 'px' });
+    calc.appendChild(b); return { b, r, el };
+  });
+  const badgeFor = { 0: 'e3', 1: 'e5', 5: 'e9', 16: 'e20', 20: 'e24' };
+  const badges = Object.entries(badgeFor).map(([i, t]) => {
+    const r = refBoxes[i].r; const g = document.createElement('div'); g.className = 'badge'; g.textContent = t;
+    Object.assign(g.style, { left: (r.x + r.w / 2) + 'px', top: (r.y + r.h - 6) + 'px' });
+    calc.appendChild(g); return g;
+  });
+  // the display badge sits at the left so it does not cover the digit
+  gsap.set(badges, { xPercent: -50 });
+  gsap.set(badges[0], { xPercent: 0 });
+  badges[0].style.left = (refBoxes[0].r.x + 6) + 'px';
+  badges[0].style.top = (refBoxes[0].r.y + 4) + 'px';
+
+  // ---------------- timeline ----------------
+  const tl = gsap.timeline({ paused: true, defaults: { ease: 'power2.out', immediateRender: false } });
+  // discrete text swaps are derived from the playhead so any seek(t) is exact
+  const textStates = [];
+  const applyText = () => {
+    const t = tl.time(), last = {};
+    textStates.forEach((st) => { if (t >= st.at) last[st.el] = st.txt; });
+    ['#pilltxt', '#mbapp'].forEach((sel) => { $(sel).textContent = last[sel] || (sel === '#mbapp' ? 'Notes' : 'bridge'); });
+  };
+  tl.eventCallback('onUpdate', applyText);
+  window.__tl = tl;
+
+  const blocks = ['#b1', '#b2', '#b3', '#b4'].map((s) => $(s));
+  gsap.set($$('.o'), { opacity: 0, y: 6 });
+  gsap.set(blocks, { opacity: 0 });
+  gsap.set('#c0', { opacity: 0 });
+  gsap.set(['#term', '#desk'], { opacity: 0, y: 18 });
+  gsap.set(['#header', '#flow', '#steps'], { opacity: 0 });
+  gsap.set('#cursor', { x: 470, y: 470 });
+
+  function type(block, at, dur) {
+    const ty = $('.ty', block), caret = $('.caret', block), s = ty.dataset.cmd, p = { n: 0 };
+    tl.set(block, { opacity: 1 }, at - 0.25);
+    tl.set(caret, { opacity: 1 }, at - 0.25);
+    tl.to(p, { n: s.length, duration: dur, ease: 'none', onUpdate: () => { ty.textContent = s.slice(0, Math.round(p.n)); } }, at);
+    // blink while idle before typing, solid while typing, off once the command runs
+    tl.to(caret, { opacity: 0, duration: 0.12, ease: 'steps(1)' }, at - 0.12);
+    tl.set(caret, { opacity: 1 }, at);
+    tl.set(caret, { opacity: 0 }, at + dur + 0.12);
+  }
+  function outputs(block, at, stagger = 0.08) {
+    tl.to($$('.o', block), { opacity: 1, y: 0, duration: 0.35, stagger }, at);
+  }
+  function pulse(at) {
+    const g = (id) => $(id + ' .glow');
+    tl.to(g('#n1'), { opacity: 1, duration: 0.15 }, at)
+      .fromTo('#l1 .dot', { left: -4, opacity: 1 }, { left: 50, duration: 0.3, ease: 'power1.inOut' }, at + 0.1)
+      .set('#l1 .dot', { opacity: 0 }, at + 0.42)
+      .to(g('#n2'), { opacity: 1, duration: 0.15 }, at + 0.38)
+      .fromTo('#l2 .dot', { left: -4, opacity: 1 }, { left: 50, duration: 0.3, ease: 'power1.inOut' }, at + 0.45)
+      .set('#l2 .dot', { opacity: 0 }, at + 0.77)
+      .to(g('#n3'), { opacity: 1, duration: 0.15 }, at + 0.74)
+      .to([g('#n1'), g('#n2'), g('#n3')], { opacity: 0, duration: 0.6, stagger: 0.08, ease: 'power1.in' }, at + 1.1);
+    tl.to('.node', { color: '#d7dde8', duration: 0.2, stagger: 0.36 }, at)
+      .to('.node', { color: '#6b7587', duration: 0.5, stagger: 0.08 }, at + 1.2);
+  }
+  const stepOn = $$('.step .on'), stepEl = $$('.step');
+  function step(i, at, until) {
+    tl.to(stepOn[i], { opacity: 1, duration: 0.3 }, at).to(stepEl[i], { color: '#d7dde8', duration: 0.3 }, at);
+    tl.to(stepOn[i], { opacity: 0, duration: 0.3 }, until).to(stepEl[i], { color: '#6b7587', duration: 0.3 }, until);
+  }
+  function pillState(at, txt, dot, bg, fg) {
+    textStates.push({ at, el: '#pilltxt', txt });
+    tl.to('#pill', { backgroundColor: bg, color: fg, duration: 0.2 }, at)
+      .to('#pill i', { backgroundColor: dot, duration: 0.2 }, at);
+  }
+
+  // 0.0 - 1.2  title card hook (visible on frame 0), caret blinks
+  tl.to('#title .tc', { opacity: 0, duration: 0.01, repeat: 3, yoyo: true, repeatDelay: 0.32 }, 0.3);
+  // 1.2 - 1.9  title out, scene in
+  tl.to('#title .big', { y: -20, opacity: 0, duration: 0.5, ease: 'power2.in' }, 1.2)
+    .to('#title .tag, #title .mini', { y: -14, opacity: 0, duration: 0.45, ease: 'power2.in', stagger: 0.05 }, 1.25)
+    .to('#title', { opacity: 0, duration: 0.4 }, 1.55)
+    .set('#title', { display: 'none' }, 1.95)
+    .to(['#header', '#flow'], { opacity: 1, duration: 0.5 }, 1.5)
+    .to(['#term', '#desk'], { opacity: 1, y: 0, duration: 0.7, ease: 'expo.out', stagger: 0.1 }, 1.5)
+    .to('#steps', { opacity: 1, duration: 0.5 }, 1.7)
+    .to('#c0', { opacity: 1, duration: 0.4 }, 1.9);
+  // subtle parallax / glow drift for the whole loop
+  tl.fromTo('#wall', { x: 0, y: 0 }, { x: -24, y: -10, duration: 13, ease: 'sine.inOut' }, 1.5);
+  tl.fromTo('#termglow', { opacity: 0.6, x: 0 }, { opacity: 1, x: 30, duration: 6, ease: 'sine.inOut', yoyo: true, repeat: 1 }, 1.5);
+
+  // 1) AppleScript
+  step(0, 2.1, 4.6);
+  pillState(2.0, 'bridge', '#6b7587', '#2a3140', '#aab3c2');
+  type(blocks[0], 2.4, 1.3);
+  pulse(3.8);
+  pillState(3.9, 'job', '#7aa2ff', '#1d2a4a', '#cfdcff');
+  outputs(blocks[0], 4.35);
+  tl.to($$('.ic .hl'), { opacity: 1, duration: 0.25, stagger: 0.09 }, 4.35)
+    .to($$('.ic').slice(0, 4), { y: -6, duration: 0.2, stagger: 0.09, yoyo: true, repeat: 1, ease: 'power1.out' }, 4.35)
+    .to($$('.ic .hl'), { opacity: 0, duration: 0.5 }, 5.3);
+
+  // 2) OCR
+  step(1, 4.75, 7.65);
+  type(blocks[1], 5.0, 0.75);
+  pulse(5.85);
+  tl.set(scan, { opacity: 1, y: 0 }, 6.15)
+    .to(scan, { y: nr.h + 18, duration: 0.85, ease: 'power1.inOut' }, 6.15)
+    .set(scan, { opacity: 0 }, 7.0);
+  boxes.forEach((o) => {
+    const t = 6.15 + ((o.r.y - nr.y + 46) / (nr.h + 46)) * 0.85;
+    tl.to(o.b, { opacity: 1, duration: 0.2 }, t);
+  });
+  tl.set(hit.b, { opacity: 0 }, 7.05)
+    .fromTo(hitBox, { scale: 1.25, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.4, ease: 'expo.out' }, 7.05)
+    .to(lbl, { opacity: 1, duration: 0.3 }, 7.1)
+    .to(boxes.filter((o) => o !== hit).map((o) => o.b), { opacity: 0, duration: 0.4 }, 7.25);
+  outputs(blocks[1], 7.1);
+
+  // 3) guarded click
+  step(2, 7.8, 10.3);
+  type(blocks[2], 8.0, 0.65);
+  pulse(8.8);
+  pillState(8.95, 'controlling', '#ff5f57', '#4a1f22', '#ffd2cf');
+  const cx = hit.r.x + hit.r.w / 2, cy = hit.r.y + hit.r.h / 2;
+  tl.to('#cursor', { x: cx - 2, y: cy - 2, duration: 0.85, ease: 'power3.inOut' }, 9.0)
+    .to('#cursor', { scale: 0.85, duration: 0.08, yoyo: true, repeat: 1, transformOrigin: '2px 2px' }, 9.85)
+    .set('#ripple', { left: cx, top: cy }, 9.85)
+    .fromTo('#ripple', { scale: 0.3, opacity: 1 }, { scale: 1.6, opacity: 0, duration: 0.6, ease: 'expo.out' }, 9.85)
+    .to(lbl, { opacity: 0, duration: 0.3 }, 9.95)
+    .to(hitBox, { opacity: 0, duration: 0.3 }, 9.95)
+    .to('#shipbox', { backgroundColor: '#f5b13d', borderColor: '#f5b13d', duration: 0.2 }, 9.9)
+    .fromTo('#shipbox', { scale: 1 }, { scale: 1.25, duration: 0.12, yoyo: true, repeat: 1 }, 9.9)
+    .to('#shipbox .tick', { opacity: 1, duration: 0.15 }, 9.95)
+    .to('#shiptxt .strike', { scaleX: 1, duration: 0.35, ease: 'power2.inOut' }, 10.0)
+    .to('#shiptxt', { color: '#7d8698', duration: 0.3 }, 10.0);
+  outputs(blocks[2], 10.05);
+  pillState(10.4, 'job', '#7aa2ff', '#1d2a4a', '#cfdcff');
+
+  // 4) accessibility tree
+  step(3, 10.45, 13.6);
+  type(blocks[3], 10.6, 0.85);
+  pulse(11.5);
+  textStates.push({ at: 11.85, el: '#mbapp', txt: 'Calculator' });
+  tl.set('#calc', { zIndex: 20 }, 11.85)
+    .fromTo('#calc', { scale: 0.97 }, { scale: 1, duration: 0.45, ease: 'expo.out' }, 11.85)
+    .to('#cursor', { x: 520, y: 440, duration: 0.7, ease: 'power2.inOut' }, 11.7)
+    .to(refBoxes.map((o) => o.b), { opacity: 1, duration: 0.25, stagger: { each: 0.025, from: 'start' } }, 12.0)
+    .to(badges, { opacity: 1, duration: 0.25, stagger: 0.08 }, 12.35);
+  outputs(blocks[3], 12.1, 0.07);
+  pillState(13.2, 'bridge', '#6b7587', '#2a3140', '#aab3c2');
+
+  // 13.8 - 15.0  back to the title card for a seamless loop
+  tl.set('#title', { display: 'flex' }, 13.75)
+    .fromTo('#title', { opacity: 0 }, { opacity: 1, duration: 0.55, ease: 'power2.inOut', immediateRender: false }, 13.8)
+    .fromTo('#title .big', { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: 'expo.out', immediateRender: false }, 14.05)
+    .fromTo('#title .tag, #title .mini', { y: 12, opacity: 0 }, { y: 0, opacity: 1, duration: 0.55, ease: 'expo.out', stagger: 0.06, immediateRender: false }, 14.15)
+    .set('#title .tc', { opacity: 1 }, 14.0)
+    .to({}, { duration: 0.01 }, 14.99);
+
+  window.__duration = 15.0;
+  window.__seek = (t) => { tl.seek(t, false); applyText(); };
+  window.__ready = true;
+
+  if (location.search.includes('play')) { tl.repeat(-1); tl.play(0); }
+})();
+</script>
+</body>
+</html>

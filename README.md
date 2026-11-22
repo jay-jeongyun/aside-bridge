@@ -1,6 +1,10 @@
-# AsideBridge
+# aside-bridge
 
-**Let a sandboxed AI agent control native macOS apps, safely and locally.**
+**Let a sandboxed AI agent control native desktop apps on macOS and Windows, safely and locally.**
+
+![aside-bridge demo: an agent lists apps, OCRs a window, clicks, and reads an accessibility tree](docs/media/demo.gif)
+
+> macOS: this folder (Swift app + Python CLI). **Windows: see [windows/](windows/README.md)** (PowerShell, same command names).
 
 AsideBridge is a small macOS helper that runs AppleScript, JXA, shell commands, synthetic
 keyboard/mouse input, screenshots and OCR **outside** an AI agent's sandbox. It was built for
@@ -49,6 +53,16 @@ It also gives sandboxed agents a way to run Vercel Labs'
 [agent-desktop](https://github.com/vercel-labs/agent-desktop) and
 [agent-browser](https://github.com/vercel-labs/agent-browser), which need Accessibility or a
 real Chrome that the sandbox normally blocks (see below).
+
+## Platforms
+
+| | macOS | Windows |
+| --- | --- | --- |
+| Bridge | Swift app + resident worker (LaunchAgent) | PowerShell bridge + worker (logon task + watchdog) |
+| Scripts | `as` (AppleScript), `jxa`, `sh` | `ps`, `uia` |
+| Input, screen, OCR, `wait`, `seq`, recipes | yes | yes |
+| agent-desktop / agent-browser passthrough | `desktop` / `browser` | not yet |
+| Status | daily use | daily use on the author's desktop; packaged installer new in 0.1.0 |
 
 ## Security warning
 
