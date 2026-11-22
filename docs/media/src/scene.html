@@ -60,7 +60,10 @@
   .tbar .ttl { flex: 1; text-align: center; font-size: 12px; color: var(--dim); margin-right: 40px; }
   .tbar .sbx { font-family: var(--mono); font-size: 10.5px; color: #8a93a6; border: 1px solid var(--line);
     padding: 2px 7px; border-radius: 999px; }
-  #tbody { padding: 16px 18px; font-family: var(--mono); font-size: 13px; line-height: 20px; }
+  #tbody { position: relative; height: 512px; font-family: var(--mono); font-size: 14.5px; line-height: 22px; }
+  .scene { position: absolute; left: 0; right: 0; top: 0; padding: 18px 18px; }
+  .out .err { color: #ff7b72; }
+  .out .warn { color: #f5c26b; }
   .cmt { color: #5b6577; }
   .blk { margin-top: 14px; }
   .cmd { white-space: pre-wrap; word-break: break-word; color: #eef2f8; }
@@ -144,8 +147,8 @@
 
   /* steps strip */
   #steps { position: absolute; left: 28px; right: 28px; top: 624px; height: 24px; display: flex;
-    justify-content: center; gap: 10px; font-size: 12px; }
-  .step { color: var(--dim); padding: 4px 12px; border-radius: 999px; border: 1px solid transparent; position: relative; }
+    justify-content: center; gap: 6px; font-size: 13px; }
+  .step { color: var(--dim); font-size: 13px; padding: 4px 11px; border-radius: 999px; border: 1px solid transparent; position: relative; }
   .step .on { position: absolute; inset: -1px; border-radius: 999px; border: 1px solid rgba(94,234,212,.5);
     background: rgba(94,234,212,.08); opacity: 0; }
   .step span { position: relative; }
@@ -167,7 +170,7 @@
 <div id="stage">
   <div id="header">
     <div class="wordmark">aside<b>-</b>bridge</div>
-    <div class="hdr-right">local · token-protected · guarded</div>
+    <div class="hdr-right">simulated screen · local · token-protected · guarded</div>
   </div>
   <div id="flow">
     <div class="node" id="n1"><div class="glow"></div><span class="lbl">sandboxed agent</span></div>
@@ -185,32 +188,54 @@
       <div class="sbx">sandboxed</div>
     </div>
     <div id="tbody">
-      <div class="cmt" id="c0"># osascript fails in here (-10827). Ask the bridge.</div>
-
-      <div class="blk" id="b1">
-        <div class="cmd"><span class="ps">$ </span><span class="ty" data-cmd="bridgectl as 'tell application &quot;System Events&quot; to get name of every application process whose visible is true'"></span><span class="caret"></span></div>
-        <div class="out o">Finder, Notes, Calculator, Terminal  <span class="d">0.17 s</span></div>
+      <div class="scene" id="sA">
+        <div class="cmt" id="c0"># inside the agent sandbox, desktop apps are off limits</div>
+        <div class="blk" id="b0">
+          <div class="cmd"><span class="ps">$ </span><span class="ty" data-cmd="osascript -e 'tell app &quot;System Events&quot; to get name of every process'"></span><span class="caret"></span></div>
+          <div class="out o"><span class="err">error: -10827 (not allowed to send Apple events)</span></div>
+        </div>
+        <div class="blk" id="b1">
+          <div class="cmt o">  # same call, through the bridge:</div>
+          <div class="cmd"><span class="ps">$ </span><span class="ty" data-cmd="bridgectl as 'tell app &quot;System Events&quot; to get name of every process'"></span><span class="caret"></span></div>
+          <div class="out o">Finder, Notes, Calculator, Terminal  <span class="d">0.17 s</span></div>
+        </div>
       </div>
-
-      <div class="blk" id="b2">
-        <div class="cmd"><span class="ps">$ </span><span class="ty" data-cmd='bridgectl ocr --win Notes --find "Ship it"'></span><span class="caret"></span></div>
-        <div class="out o">{<span class="k">"text"</span>: "Ship it", <span class="k">"x"</span>: <span class="n">812</span>, <span class="k">"y"</span>: <span class="n">436</span>, <span class="k">"conf"</span>: <span class="n">0.98</span>}</div>
+      <div class="scene" id="sB">
+        <div class="blk" id="b2" style="margin-top:0">
+          <div class="cmd"><span class="ps">$ </span><span class="ty" data-cmd='bridgectl ocr --win Notes --find "Ship it"'></span><span class="caret"></span></div>
+          <div class="out o">{<span class="k">"text"</span>: "Ship it", <span class="k">"x"</span>: <span class="n">812</span>, <span class="k">"y"</span>: <span class="n">436</span>, <span class="k">"conf"</span>: <span class="n">0.98</span>}</div>
+        </div>
+        <div class="blk" id="b3">
+          <div class="cmd"><span class="ps">$ </span><span class="ty" data-cmd="bridgectl click 812 436 --expect Notes"></span><span class="caret"></span></div>
+          <div class="out o"><span class="ok">ok</span>  front=Notes  <span class="d">guards:</span> stop <span class="ok">✓</span> lock <span class="ok">✓</span> idle <span class="ok">✓</span></div>
+        </div>
       </div>
-
-      <div class="blk" id="b3">
-        <div class="cmd"><span class="ps">$ </span><span class="ty" data-cmd="bridgectl click 812 436 --expect Notes"></span><span class="caret"></span></div>
-        <div class="out o"><span class="ok">ok</span>  front=Notes  <span class="d">guards:</span> stop <span class="ok">✓</span> lock <span class="ok">✓</span> idle <span class="ok">✓</span></div>
+      <div class="scene" id="sC">
+        <div class="cmt" id="c1"># you stay in control</div>
+        <div class="blk" id="b5">
+          <div class="cmd"><span class="ps">$ </span><span class="ty" data-cmd="touch ~/.asidebridge/STOP"></span><span class="caret"></span></div>
+          <div class="out o"><span class="warn">paused</span>  <span class="d">nothing will run</span></div>
+        </div>
+        <div class="blk" id="b6">
+          <div class="cmd"><span class="ps">$ </span><span class="ty" data-cmd="bridgectl click 812 436"></span><span class="caret"></span></div>
+          <div class="out o"><span class="err">blocked: STOP is set, no input sent</span></div>
+        </div>
+        <div class="blk" id="b7">
+          <div class="cmd"><span class="ps">$ </span><span class="ty" data-cmd="bridgectl resume"></span><span class="caret"></span></div>
+          <div class="out o"><span class="ok">ok</span>  <span class="d">running again</span></div>
+        </div>
       </div>
-
-      <div class="blk" id="b4">
-        <div class="cmd"><span class="ps">$ </span><span class="ty" data-cmd="bridgectl desktop snapshot --app Calculator"></span><span class="caret"></span></div>
-        <div class="out o">- window "Calculator"   <span class="k">@s1:e1</span></div>
-        <div class="out o">  - text "0"            <span class="k">@s1:e3</span></div>
-        <div class="out o">  - button "AC"         <span class="k">@s1:e5</span></div>
-        <div class="out o">  - button "7"          <span class="k">@s1:e9</span></div>
-        <div class="out o">  - button "+"          <span class="k">@s1:e20</span></div>
-        <div class="out o">  - button "="          <span class="k">@s1:e24</span></div>
-        <div class="out o"><span class="d">  … 18 more</span></div>
+      <div class="scene" id="sD">
+        <div class="blk" id="b4" style="margin-top:0">
+          <div class="cmd"><span class="ps">$ </span><span class="ty" data-cmd="bridgectl desktop snapshot --app Calculator"></span><span class="caret"></span></div>
+          <div class="out o">- window "Calculator"   <span class="k">@s1:e1</span></div>
+          <div class="out o">  - text "0"            <span class="k">@s1:e3</span></div>
+          <div class="out o">  - button "AC"         <span class="k">@s1:e5</span></div>
+          <div class="out o">  - button "7"          <span class="k">@s1:e9</span></div>
+          <div class="out o">  - button "+"          <span class="k">@s1:e20</span></div>
+          <div class="out o">  - button "="          <span class="k">@s1:e24</span></div>
+          <div class="out o"><span class="d">  … 18 more</span></div>
+        </div>
       </div>
     </div>
   </div>
@@ -262,10 +287,11 @@
   </div>
 
   <div id="steps">
-    <div class="step"><div class="on"></div><span><em>1</em>AppleScript / JXA</span></div>
+    <div class="step"><div class="on"></div><span><em>1</em>Sandbox blocked</span></div>
     <div class="step"><div class="on"></div><span><em>2</em>Window OCR</span></div>
-    <div class="step"><div class="on"></div><span><em>3</em>Guarded input</span></div>
-    <div class="step"><div class="on"></div><span><em>4</em>Accessibility tree</span></div>
+    <div class="step"><div class="on"></div><span><em>3</em>Guarded click</span></div>
+    <div class="step"><div class="on"></div><span><em>4</em>STOP switch</span></div>
+    <div class="step"><div class="on"></div><span><em>5</em>Accessibility tree</span></div>
   </div>
 
   <div id="title">
@@ -349,10 +375,11 @@
   tl.eventCallback('onUpdate', applyText);
   window.__tl = tl;
 
-  const blocks = ['#b1', '#b2', '#b3', '#b4'].map((s) => $(s));
+  const blocks = ['#b0', '#b1', '#b2', '#b3', '#b4', '#b5', '#b6', '#b7'].map((s) => $(s));
   gsap.set($$('.o'), { opacity: 0, y: 6 });
   gsap.set(blocks, { opacity: 0 });
   gsap.set('#c0', { opacity: 0 });
+  gsap.set(['#sB', '#sC', '#sD', '#c1'], { opacity: 0 });
   gsap.set(['#term', '#desk'], { opacity: 0, y: 18 });
   gsap.set(['#header', '#flow', '#steps'], { opacity: 0 });
   gsap.set('#cursor', { x: 470, y: 470 });
@@ -409,76 +436,110 @@
   tl.fromTo('#wall', { x: 0, y: 0 }, { x: -24, y: -10, duration: 13, ease: 'sine.inOut' }, 1.5);
   tl.fromTo('#termglow', { opacity: 0.6, x: 0 }, { opacity: 1, x: 30, duration: 6, ease: 'sine.inOut', yoyo: true, repeat: 1 }, 1.5);
 
-  // 1) AppleScript
-  step(0, 2.1, 4.6);
+  const scene = (id, at, out) => { tl.set(id, { opacity: 1 }, at); tl.to(id, { opacity: 0, duration: 0.3 }, out); };
+  const SB = '.tbar .sbx';
   pillState(2.0, 'bridge', '#6b7587', '#2a3140', '#aab3c2');
-  type(blocks[0], 2.4, 1.3);
-  pulse(3.8);
-  pillState(3.9, 'job', '#7aa2ff', '#1d2a4a', '#cfdcff');
-  outputs(blocks[0], 4.35);
-  tl.to($$('.ic .hl'), { opacity: 1, duration: 0.25, stagger: 0.09 }, 4.35)
-    .to($$('.ic').slice(0, 4), { y: -6, duration: 0.2, stagger: 0.09, yoyo: true, repeat: 1, ease: 'power1.out' }, 4.35)
-    .to($$('.ic .hl'), { opacity: 0, duration: 0.5 }, 5.3);
 
-  // 2) OCR
-  step(1, 4.75, 7.65);
-  type(blocks[1], 5.0, 0.75);
-  pulse(5.85);
-  tl.set(scan, { opacity: 1, y: 0 }, 6.15)
-    .to(scan, { y: nr.h + 18, duration: 0.85, ease: 'power1.inOut' }, 6.15)
-    .set(scan, { opacity: 0 }, 7.0);
+  // 1) the problem, then the bridge (2.0 - 7.0)
+  step(0, 2.1, 6.9);
+  tl.to('#c0', { opacity: 1, duration: 0.4 }, 1.9);
+  type(blocks[0], 2.5, 1.2);
+  tl.to(blocks[0].querySelector('.o'), { opacity: 1, y: 0, duration: 0.2 }, 3.85)
+    .to(SB, { color: '#ff7b72', borderColor: '#ff5f57', duration: 0.15 }, 3.85)
+    .fromTo('#term', { x: 0 }, { x: 0, keyframes: { x: [0, -7, 7, -5, 5, 0] }, duration: 0.4, ease: 'none' }, 3.85)
+    .to(SB, { color: '#8a93a6', borderColor: '#1f2633', duration: 0.5 }, 5.0);
+  tl.to(blocks[1].querySelector('.cmt'), { opacity: 1, y: 0, duration: 0.3 }, 4.5);
+  type(blocks[1], 4.9, 1.2);
+  pulse(6.2);
+  pillState(6.3, 'job', '#7aa2ff', '#1d2a4a', '#cfdcff');
+  tl.to(blocks[1].querySelector('.out'), { opacity: 1, y: 0, duration: 0.35 }, 6.75);
+  tl.to($$('.ic .hl'), { opacity: 1, duration: 0.25, stagger: 0.09 }, 6.75)
+    .to($$('.ic').slice(0, 4), { y: -6, duration: 0.2, stagger: 0.09, yoyo: true, repeat: 1, ease: 'power1.out' }, 6.75)
+    .to($$('.ic .hl'), { opacity: 0, duration: 0.5 }, 7.7);
+  tl.to('#sA', { opacity: 0, duration: 0.3 }, 8.1);
+
+  // 2) OCR + guarded click (8.3 - 13.7)
+  const O = 3.3;
+  tl.set('#sB', { opacity: 1 }, 8.3);
+  step(1, 8.4, 10.5 + 0.0);
+  type(blocks[2], 5.0 + O, 0.75);
+  pulse(5.85 + O);
+  tl.set(scan, { opacity: 1, y: 0 }, 6.15 + O)
+    .to(scan, { y: nr.h + 18, duration: 0.85, ease: 'power1.inOut' }, 6.15 + O)
+    .set(scan, { opacity: 0 }, 7.0 + O);
   boxes.forEach((o) => {
-    const t = 6.15 + ((o.r.y - nr.y + 46) / (nr.h + 46)) * 0.85;
+    const t = 6.15 + O + ((o.r.y - nr.y + 46) / (nr.h + 46)) * 0.85;
     tl.to(o.b, { opacity: 1, duration: 0.2 }, t);
   });
-  tl.set(hit.b, { opacity: 0 }, 7.05)
-    .fromTo(hitBox, { scale: 1.25, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.4, ease: 'expo.out' }, 7.05)
-    .to(lbl, { opacity: 1, duration: 0.3 }, 7.1)
-    .to(boxes.filter((o) => o !== hit).map((o) => o.b), { opacity: 0, duration: 0.4 }, 7.25);
-  outputs(blocks[1], 7.1);
-
-  // 3) guarded click
-  step(2, 7.8, 10.3);
-  type(blocks[2], 8.0, 0.65);
-  pulse(8.8);
-  pillState(8.95, 'controlling', '#ff5f57', '#4a1f22', '#ffd2cf');
+  tl.set(hit.b, { opacity: 0 }, 7.05 + O)
+    .fromTo(hitBox, { scale: 1.25, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.4, ease: 'expo.out' }, 7.05 + O)
+    .to(lbl, { opacity: 1, duration: 0.3 }, 7.1 + O)
+    .to(boxes.filter((o) => o !== hit).map((o) => o.b), { opacity: 0, duration: 0.4 }, 7.25 + O);
+  tl.to(blocks[2].querySelector('.o'), { opacity: 1, y: 0, duration: 0.35 }, 7.1 + O);
+  step(2, 7.8 + O, 10.3 + O);
+  type(blocks[3], 8.0 + O, 0.65);
+  pulse(8.8 + O);
+  pillState(8.95 + O, 'controlling', '#ff5f57', '#4a1f22', '#ffd2cf');
   const cx = hit.r.x + hit.r.w / 2, cy = hit.r.y + hit.r.h / 2;
-  tl.to('#cursor', { x: cx - 2, y: cy - 2, duration: 0.85, ease: 'power3.inOut' }, 9.0)
-    .to('#cursor', { scale: 0.85, duration: 0.08, yoyo: true, repeat: 1, transformOrigin: '2px 2px' }, 9.85)
-    .set('#ripple', { left: cx, top: cy }, 9.85)
-    .fromTo('#ripple', { scale: 0.3, opacity: 1 }, { scale: 1.6, opacity: 0, duration: 0.6, ease: 'expo.out' }, 9.85)
-    .to(lbl, { opacity: 0, duration: 0.3 }, 9.95)
-    .to(hitBox, { opacity: 0, duration: 0.3 }, 9.95)
-    .to('#shipbox', { backgroundColor: '#f5b13d', borderColor: '#f5b13d', duration: 0.2 }, 9.9)
-    .fromTo('#shipbox', { scale: 1 }, { scale: 1.25, duration: 0.12, yoyo: true, repeat: 1 }, 9.9)
-    .to('#shipbox .tick', { opacity: 1, duration: 0.15 }, 9.95)
-    .to('#shiptxt .strike', { scaleX: 1, duration: 0.35, ease: 'power2.inOut' }, 10.0)
-    .to('#shiptxt', { color: '#7d8698', duration: 0.3 }, 10.0);
-  outputs(blocks[2], 10.05);
-  pillState(10.4, 'job', '#7aa2ff', '#1d2a4a', '#cfdcff');
+  tl.to('#cursor', { x: cx - 2, y: cy - 2, duration: 0.85, ease: 'power3.inOut' }, 9.0 + O)
+    .to('#cursor', { scale: 0.85, duration: 0.08, yoyo: true, repeat: 1, transformOrigin: '2px 2px' }, 9.85 + O)
+    .set('#ripple', { left: cx, top: cy }, 9.85 + O)
+    .fromTo('#ripple', { scale: 0.3, opacity: 1 }, { scale: 1.6, opacity: 0, duration: 0.6, ease: 'expo.out' }, 9.85 + O)
+    .to(lbl, { opacity: 0, duration: 0.3 }, 9.95 + O)
+    .to(hitBox, { opacity: 0, duration: 0.3 }, 9.95 + O)
+    .to('#shipbox', { backgroundColor: '#f5b13d', borderColor: '#f5b13d', duration: 0.2 }, 9.9 + O)
+    .fromTo('#shipbox', { scale: 1 }, { scale: 1.25, duration: 0.12, yoyo: true, repeat: 1 }, 9.9 + O)
+    .to('#shipbox .tick', { opacity: 1, duration: 0.15 }, 9.95 + O)
+    .to('#shiptxt .strike', { scaleX: 1, duration: 0.35, ease: 'power2.inOut' }, 10.0 + O)
+    .to('#shiptxt', { color: '#7d8698', duration: 0.3 }, 10.0 + O);
+  tl.to(blocks[3].querySelector('.o'), { opacity: 1, y: 0, duration: 0.35 }, 10.05 + O);
+  pillState(10.4 + O, 'job', '#7aa2ff', '#1d2a4a', '#cfdcff');
+  tl.to('#sB', { opacity: 0, duration: 0.3 }, 11.4 + O + 0.1);
 
-  // 4) accessibility tree
-  step(3, 10.45, 13.6);
-  type(blocks[3], 10.6, 0.85);
-  pulse(11.5);
-  textStates.push({ at: 11.85, el: '#mbapp', txt: 'Calculator' });
-  tl.set('#calc', { zIndex: 20 }, 11.85)
-    .fromTo('#calc', { scale: 0.97 }, { scale: 1, duration: 0.45, ease: 'expo.out' }, 11.85)
-    .to('#cursor', { x: 520, y: 440, duration: 0.7, ease: 'power2.inOut' }, 11.7)
-    .to(refBoxes.map((o) => o.b), { opacity: 1, duration: 0.25, stagger: { each: 0.025, from: 'start' } }, 12.0)
-    .to(badges, { opacity: 1, duration: 0.25, stagger: 0.08 }, 12.35);
-  outputs(blocks[3], 12.1, 0.07);
-  pillState(13.2, 'bridge', '#6b7587', '#2a3140', '#aab3c2');
+  // 3) STOP switch (15.2 - 20.0)
+  const C = 15.2;
+  tl.set('#sC', { opacity: 1 }, C);
+  tl.to('#c1', { opacity: 1, duration: 0.3 }, C);
+  step(3, C + 0.1, C + 4.5);
+  type(blocks[5], C + 0.5, 0.6);
+  pillState(C + 1.3, 'paused', '#f5a623', '#4a3510', '#ffe0a8');
+  tl.to(blocks[5].querySelector('.o'), { opacity: 1, y: 0, duration: 0.3 }, C + 1.3)
+    .to('#cursor', { x: cx + 40, y: cy + 60, duration: 0.5, ease: 'power2.inOut' }, C + 1.3);
+  type(blocks[6], C + 1.9, 0.6);
+  tl.set('#ripple', { left: cx + 40, top: cy + 60 }, C + 2.75)
+    .fromTo('#ripple', { scale: 0.3, opacity: 1, borderColor: '#f5a623' }, { scale: 1.2, opacity: 0, duration: 0.5, ease: 'expo.out' }, C + 2.75)
+    .to(blocks[6].querySelector('.o'), { opacity: 1, y: 0, duration: 0.3 }, C + 2.75)
+    .to('#cursor', { keyframes: { x: [cx + 40, cx + 33, cx + 47, cx + 36, cx + 40] }, duration: 0.35, ease: 'none' }, C + 2.8);
+  type(blocks[7], C + 3.4, 0.5);
+  pillState(C + 4.1, 'bridge', '#6b7587', '#2a3140', '#aab3c2');
+  tl.to(blocks[7].querySelector('.o'), { opacity: 1, y: 0, duration: 0.3 }, C + 4.1);
+  tl.to('#sC', { opacity: 0, duration: 0.3 }, C + 4.9);
 
-  // 13.8 - 15.0  back to the title card for a seamless loop
-  tl.set('#title', { display: 'flex' }, 13.75)
-    .fromTo('#title', { opacity: 0 }, { opacity: 1, duration: 0.55, ease: 'power2.inOut', immediateRender: false }, 13.8)
-    .fromTo('#title .big', { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: 'expo.out', immediateRender: false }, 14.05)
-    .fromTo('#title .tag, #title .mini', { y: 12, opacity: 0 }, { y: 0, opacity: 1, duration: 0.55, ease: 'expo.out', stagger: 0.06, immediateRender: false }, 14.15)
-    .set('#title .tc', { opacity: 1 }, 14.0)
-    .to({}, { duration: 0.01 }, 14.99);
+  // 4) accessibility tree (20.4 - 24.0)
+  const P = 20.4 - 10.45;
+  tl.set('#sD', { opacity: 1 }, 20.35);
+  step(4, 20.45, 24.2);
+  type(blocks[4], 10.6 + P, 0.85);
+  pulse(11.5 + P);
+  pillState(11.6 + P, 'job', '#7aa2ff', '#1d2a4a', '#cfdcff');
+  textStates.push({ at: 11.85 + P, el: '#mbapp', txt: 'Calculator' });
+  tl.set('#calc', { zIndex: 20 }, 11.85 + P)
+    .fromTo('#calc', { scale: 0.97 }, { scale: 1, duration: 0.45, ease: 'expo.out' }, 11.85 + P)
+    .to('#cursor', { x: 520, y: 440, duration: 0.7, ease: 'power2.inOut' }, 11.7 + P)
+    .to(refBoxes.map((o) => o.b), { opacity: 1, duration: 0.25, stagger: { each: 0.025, from: 'start' } }, 12.0 + P)
+    .to(badges, { opacity: 1, duration: 0.25, stagger: 0.08 }, 12.35 + P);
+  outputs(blocks[4], 12.1 + P, 0.07);
+  pillState(13.2 + P, 'bridge', '#6b7587', '#2a3140', '#aab3c2');
 
-  window.__duration = 15.0;
+  // 24.4 - 15.0  back to the title card for a seamless loop
+  tl.set('#title', { display: 'flex' }, 24.35)
+    .fromTo('#title', { opacity: 0 }, { opacity: 1, duration: 0.55, ease: 'power2.inOut', immediateRender: false }, 24.4)
+    .fromTo('#title .big', { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: 'expo.out', immediateRender: false }, 24.65)
+    .fromTo('#title .tag, #title .mini', { y: 12, opacity: 0 }, { y: 0, opacity: 1, duration: 0.55, ease: 'expo.out', stagger: 0.06, immediateRender: false }, 24.75)
+    .set('#title .tc', { opacity: 1 }, 24.6)
+    .to({}, { duration: 0.01 }, 25.59);
+
+  window.__duration = 25.6;
   window.__seek = (t) => { tl.seek(t, false); applyText(); };
   window.__ready = true;
 

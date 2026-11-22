@@ -2,7 +2,7 @@
 
 **Let a sandboxed AI agent control native desktop apps on macOS and Windows, safely and locally.**
 
-![aside-bridge demo: an agent lists apps, OCRs a window, clicks, and reads an accessibility tree](docs/media/demo.gif)
+![aside-bridge demo (simulated screen): the sandbox blocks osascript, the bridge runs it, OCR and a guarded click, a STOP switch, and an accessibility tree](docs/media/demo.gif)
 
 > macOS: this folder (Swift app + Python CLI). **Windows: see [windows/](windows/README.md)** (PowerShell, same command names).
 
