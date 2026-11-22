@@ -1,0 +1,29 @@
+# build output - never commit binaries
+build/
+*.app/
+*.o
+*.dSYM/
+.build/
+
+# runtime data (lives in ~/.asidebridge, but never commit it if pointed here)
+token
+status.json
+recipes.json
+bridge.lock
+STOP
+logs/
+inbox/
+outbox/
+work/
+run/
+*.log
+
+# editor / OS
+.DS_Store
+*.bak
+*.bak*
+*.swp
+__pycache__/
+*.pyc
+.vscode/
+.idea/
