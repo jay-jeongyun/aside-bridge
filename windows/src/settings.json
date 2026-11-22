@@ -1,0 +1,7 @@
+{
+  "idleGuardSec": 3,
+  "idleWaitSec": 20,
+  "stepShots": false,
+  "ocrLang": "",
+  "sysinfoServices": []
+}

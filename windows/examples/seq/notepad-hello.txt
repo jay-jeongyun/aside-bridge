@@ -1,0 +1,11 @@
+# Open Notepad, type a line and check it with OCR.
+#   python bridgectl.py seq -f windows/examples/seq/notepad-hello.txt
+# Window titles assume an English Windows; change "Notepad" for other languages.
+# One step per line, same syntax as the CLI. `?` = optional step, `sleep MS`, `expect TITLE`.
+run notepad.exe
+wait window Notepad --timeout 10
+activate Notepad
+expect Notepad
+type Hello from AsideBridge
+sleep 300
+?wait text Hello --win Notepad --timeout 5
