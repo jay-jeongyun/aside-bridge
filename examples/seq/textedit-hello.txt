@@ -1,0 +1,11 @@
+# Open a new TextEdit document and type into it.
+# bridgectl seq -f examples/seq/textedit-hello.txt
+# Every input step is guarded (STOP file, screen lock, user idle, expected front app).
+activate TextEdit
+wait window TextEdit --timeout 10
+?key cmd+n
+sleep 0.5
+expect TextEdit
+type Hello from AsideBridge
+key enter
+type Typed by a local AI agent, outside its sandbox.
