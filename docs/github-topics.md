@@ -9,7 +9,7 @@ local, token-protected helper. Unofficial, not affiliated with Aside.
 ## Topics (GitHub allows up to 20)
 
 aside, aside-browser, ai-agent, ai-agents, computer-use, macos, macos-automation, applescript,
-jxa, osascript, sandbox, accessibility, ocr, vision-framework, swift, python, launchagent,
+jxa, osascript, sandbox, accessibility, ocr, agent-desktop, agent-browser, orca, claude-code,
 desktop-automation, llm-tools, agent-tools
 
 ## Search phrases to keep natural in README / docs

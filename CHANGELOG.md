@@ -5,6 +5,7 @@ All notable changes to this project are documented here. The format follows
 [Semantic Versioning](https://semver.org/).
 
 ## [0.1.0] - 2026-11-22
+- `desktop` / `browser` commands (aliases `ad` / `web`): run Vercel agent-desktop and agent-browser outside the sandbox.
 
 First public release, extracted from a tool used daily with the Aside browser agent.
 

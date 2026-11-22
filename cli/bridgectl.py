@@ -20,6 +20,9 @@ Screen:      wins [filter] | front | idle | shot [--win APP|ID] [--region x,y,w,
              ocr [--win APP] [--region ..] [--find TEXT] [--fast] [--keep]
              wait text|gone-text|window|gone-window TARGET [--win APP] [--timeout S]
              watch [--win APP | --region ..] [--sec 1]
+Agent tools: desktop ARGS... (Vercel agent-desktop: snapshot, click @ref)  alias: ad
+             browser ARGS... (Vercel agent-browser: CDP web automation)    alias: web
+             Runs the tool outside the sandbox. Binaries: PATH or AGENT_DESKTOP_BIN / AGENT_BROWSER_BIN.
 Other:       clip [text] | activate APP | notify 'msg' | sysinfo | stop | resume
 Sequences:   seq -f steps.txt | seq 'step1' 'step2' ...  [--expect APP] [--save NAME] [--vars k=v ...]
              One step per line, same syntax as above plus `sleep S` and `expect APP`;
@@ -436,6 +439,44 @@ def print_result(cmd, res, as_json):
         sys.stderr.write(f"bridge error: {res['error']}{detail}\n")
 
 
+EXTERNAL_TOOLS = {
+    # Vercel Labs agent tools, run from the bridge context (outside the agent sandbox).
+    "desktop": ("AGENT_DESKTOP_BIN", "agent-desktop"),  # accessibility-tree desktop control: snapshot, click @ref
+    "browser": ("AGENT_BROWSER_BIN", "agent-browser"),  # CDP browser automation
+}
+
+
+def external_tool(cmd, args, as_json=False):
+    """Pass arguments to agent-desktop / agent-browser, executed by the bridge outside the sandbox.
+
+    The agent's own sandbox usually cannot reach Accessibility or launch Chrome; the bridge can.
+    Binaries are taken from AGENT_DESKTOP_BIN / AGENT_BROWSER_BIN, else from PATH.
+    """
+    import unicodedata
+    name = {"ad": "desktop", "web": "browser"}.get(cmd, cmd)
+    env_var, default_bin = EXTERNAL_TOOLS[name]
+    timeout = popopt(args, "--timeout", default=None)
+    timeout = int(timeout) if timeout else 90
+    binary = os.path.expanduser(os.environ.get(env_var, default_bin))
+    args = [unicodedata.normalize("NFC", a) for a in args]  # AX names match in NFC
+    if name == "browser" and "--session" not in args and not os.environ.get("AGENT_BROWSER_SESSION"):
+        args = ["--session", "aside-bridge"] + args  # dedicated session, not the shared default
+    # The shell path may decompose non-ASCII text (NFD); re-normalize right before exec.
+    wrap = ("import sys,os,shutil,unicodedata;b=shutil.which(sys.argv[1]) or sys.argv[1];"
+            "a=[unicodedata.normalize('NFC',x) for x in sys.argv[2:]];os.execv(b,[b]+a)")
+    line = "/usr/bin/python3 -c " + shlex.quote(wrap) + " " + shlex.quote(binary) + " " + " ".join(shlex.quote(a) for a in args)
+    try:
+        res = fast({"cmd": "sh", "script": line, "timeout": timeout}, timeout + 10)
+    except Unavailable:
+        res = submit("shell", line, timeout)
+    if as_json:
+        print(json.dumps(res, ensure_ascii=False))
+    else:
+        sys.stdout.write(res.get("stdout", ""))
+        sys.stderr.write(res.get("stderr", ""))
+    return EXIT_OK if res.get("ok") else EXIT_FAIL
+
+
 def main(argv):
     as_json = popflag(argv, "--json")
     bg = popflag(argv, "--bg")
@@ -470,6 +511,8 @@ def main(argv):
         return EXIT_OK
     if cmd == "recipe":
         return recipe_cmd(argv[1:])
+    if cmd in ("desktop", "ad", "browser", "web"):
+        return external_tool(cmd, argv[1:], as_json)
     try:
         if cmd == "daemon":
             op = argv[1] if len(argv) > 1 else "status"

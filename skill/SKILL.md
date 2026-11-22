@@ -65,3 +65,7 @@ Use `--force` only when the user explicitly asks.
 - Never pay, delete, or change system security settings without explicit confirmation.
 - Never print or copy the token file.
 - If the user says stop, run `$B stop` immediately.
+
+## Vercel agent-desktop / agent-browser
+
+If `agent-desktop` or `agent-browser` fail inside the sandbox (no Accessibility, cannot start Chrome), run them through the bridge: `bridgectl desktop ARGS...` (alias `ad`) and `bridgectl browser ARGS...` (alias `web`, dedicated session `aside-bridge`). Read `bridgectl desktop skills get desktop` first.

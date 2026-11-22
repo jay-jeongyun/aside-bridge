@@ -6,7 +6,9 @@ AsideBridge is a small macOS helper that runs AppleScript, JXA, shell commands, 
 keyboard/mouse input, screenshots and OCR **outside** an AI agent's sandbox. It was built for
 the agent in the [Aside browser](https://aside.com), whose sandbox blocks Apple Events and
 LaunchServices (`osascript` and `open -a` fail with error `-10827`), but it works with any
-local agent that can run a Python script and write to a folder.
+local agent that can run a Python script and write to a folder: it has also been used with
+[Orca](https://github.com/stablyai/orca), and should work with Claude Code, Codex CLI or any other
+sandboxed coding agent.
 
 > **Unofficial community tool, not affiliated with At Your Side Inc. / Aside.**
 > "Aside" is used only to describe compatibility.
@@ -35,6 +37,19 @@ door through that wall:
 - **No dependencies.** Two small Swift apps built with `swiftc`, and a CLI that uses only the
   Python 3 standard library.
 
+## Works with
+
+| Agent | Status |
+| --- | --- |
+| [Aside browser](https://aside.com) agent | daily use (the reason this exists) |
+| [Orca](https://github.com/stablyai/orca) agents | used |
+| Claude Code, Codex CLI, Gemini / Antigravity CLI, other sandboxed agents | should work: anything that can run `python3` and write to `~/.asidebridge` (untested) |
+
+It also gives sandboxed agents a way to run Vercel Labs'
+[agent-desktop](https://github.com/vercel-labs/agent-desktop) and
+[agent-browser](https://github.com/vercel-labs/agent-browser), which need Accessibility or a
+real Chrome that the sandbox normally blocks (see below).
+
 ## Security warning
 
 AsideBridge deliberately gives an AI agent the ability to run code **outside its sandbox**
@@ -53,7 +68,7 @@ Read [docs/security.md](docs/security.md) before installing.
 Requirements: macOS 13+, Xcode Command Line Tools (`xcode-select --install`), Python 3.
 
 ```bash
-git clone https://github.com/jay-jeongyun/asidebridge.git && cd asidebridge
+git clone https://github.com/jay-jeongyun/aside-bridge.git && cd aside-bridge
 scripts/build.sh                 # builds build/AsideBridge.app + build/AsideBridgeWorker.app (ad-hoc signed)
 scripts/install.sh install       # run in Terminal.app, not inside an agent sandbox
 ```
@@ -96,6 +111,24 @@ bridgectl stop | resume | status | daemon restart
 
 Exit codes: `0` ok, `1` the command failed, `2` the bridge is unavailable.
 Run `bridgectl --help` for every command and option.
+
+## agent-desktop and agent-browser from inside a sandbox
+
+`agent-desktop` (accessibility-tree desktop control: snapshot, then click `@ref`) and
+`agent-browser` (CDP browser automation) are great agent tools, but from inside a sandboxed
+agent they usually fail: no Accessibility permission, no way to launch Chrome. AsideBridge runs
+them in its own context, where those permissions live:
+
+```bash
+npm i -g agent-desktop agent-browser          # or point AGENT_DESKTOP_BIN / AGENT_BROWSER_BIN at them
+bridgectl desktop snapshot --app Finder       # alias: ad
+bridgectl desktop click @s1:e12             # ref from the snapshot
+bridgectl browser open https://example.com    # alias: web; uses a dedicated "aside-bridge" session
+bridgectl browser snapshot -i
+```
+
+Use the bridge's own `as` / `jxa` / `ocr` for quick one-offs, and agent-desktop when you want a
+stable element tree to click by reference.
 
 ## Using it from the Aside browser (or another agent)
 
