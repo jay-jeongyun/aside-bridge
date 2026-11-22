@@ -53,7 +53,7 @@ Read [docs/security.md](docs/security.md) before installing.
 Requirements: macOS 13+, Xcode Command Line Tools (`xcode-select --install`), Python 3.
 
 ```bash
-git clone https://github.com/<you>/asidebridge.git && cd asidebridge
+git clone https://github.com/jay-jeongyun/asidebridge.git && cd asidebridge
 scripts/build.sh                 # builds build/AsideBridge.app + build/AsideBridgeWorker.app (ad-hoc signed)
 scripts/install.sh install       # run in Terminal.app, not inside an agent sandbox
 ```
